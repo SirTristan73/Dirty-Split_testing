@@ -18,6 +18,10 @@ public class PlayerBehavior : NetworkBehaviour
     [SerializeField] private float _shootRange = 50f;
     [SerializeField] private float _shootDamage = 25f;
 
+    [Header("Animation")]
+    [SerializeField] private Animator _animator;
+
+
     private void OnEnable()
     {
         EventBus.EventBus.SubscribeToEvent<MoveEvent>(OnMoveEvent);
@@ -43,7 +47,13 @@ public class PlayerBehavior : NetworkBehaviour
         _lookRotationX += -_lookInput.y * _lookSensitivity * Time.deltaTime;
         _lookRotationX = Mathf.Clamp(_lookRotationX, -90f, 90f);
         if (_playerCamera != null)
+        {
             _playerCamera.transform.localRotation = Quaternion.Euler(_lookRotationX, 0, 0);
+        }
+
+
+            UpdateAnimation(true);
+
     }
 
     private void FixedUpdate()
@@ -66,6 +76,7 @@ public class PlayerBehavior : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
+        UpdateAnimation(false);
         // Двери
         if (Physics.Raycast(_playerCamera.transform.position, _playerCamera.transform.forward, out RaycastHit doorHit, 2f))
         {
@@ -102,6 +113,20 @@ if (Physics.Raycast(_playerCamera.transform.position, _playerCamera.transform.fo
         {
             npc.TakeDamage(damage);
             Debug.Log($"NPC hit on server: {npc.name}, damage: {damage}");
+        }
+    }
+
+    private void UpdateAnimation(bool isMoving)
+    {
+        if (isMoving)
+        {
+            float speed = new Vector3(_movementInput.x, 0, _movementInput.z).magnitude;
+
+            _animator.SetInteger("State", (int)speed);
+        }
+        else
+        {
+            _animator.SetTrigger("Attack");
         }
     }
 }

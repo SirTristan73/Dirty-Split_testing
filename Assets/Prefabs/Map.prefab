@@ -68,17 +68,17 @@ MonoBehaviour:
   _spawnPoints:
   - {fileID: 6606961157212447261}
   - {fileID: 862205901195166981}
-  npcPrefab: {fileID: 2187164285877369202, guid: 3c112e3b108af46ad9146138a96a69e9, type: 3}
+  npcPrefab: {fileID: 2187164285877369202, guid: 443f04e44a88b4dfaa477695dd6b1331, type: 3}
   npcSpawnPoints:
   - {fileID: 7014776719600579399}
   - {fileID: 2236473331166239323}
   - {fileID: 6011261273525693038}
-  _doorPrefab: {fileID: 8551333568661459407, guid: c07253b1a37e341d6b1758c9b51ab0c5, type: 3}
+  _doorPrefab: {fileID: 8551333568661459407, guid: e8704ea67b1e5487d884d8349e98bc35, type: 3}
   _doorSpawnPoints:
   - {fileID: 7152102230636456596}
   - {fileID: 1430330965489853235}
   - {fileID: 4918757490057978465}
-  _trapPrefab: {fileID: 6667903012269605898, guid: 0c80fefda571d498fa5c5fc360579356, type: 3}
+  _trapPrefab: {fileID: 6667903012269605898, guid: 7b9740446202949edb63655951bb278f, type: 3}
   _trapSpawnPoints:
   - {fileID: 8365868903347824754}
   - {fileID: 4904863007073010820}
@@ -453,7 +453,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 931318883
+  _assetId: 1451183513
   serverOnly: 0
   visibility: 0
   hasSpawned: 0

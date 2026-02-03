@@ -2,131 +2,195 @@ using UnityEngine;
 using EventBus;
 using Mirror;
 
-public class PlayerBehavior : NetworkBehaviour
+public class PlayerBehavior : NetworkBehaviour, IDamageable
 {
-[Header("Movement")]
+    [Header("Movement")]
     [SerializeField] private float _speed = 5f;
+    [SerializeField] private Rigidbody _playerRB;
     private Vector3 _movementInput;
 
-    [Header("Look")]
+    [Header("Look / Aim")]
+    [SerializeField] private Transform _playerTransform;
+    [SerializeField] private Vector2 _lookInput;
+    [SerializeField] private float _rotationSpeed = 720f;
+
+    [Header("Camera")]
     [SerializeField] private Camera _playerCamera;
-    private Vector2 _lookInput;
-    private float _lookRotationX = 0f;
-    [SerializeField] private float _lookSensitivity = 100f;
 
     [Header("Shooting")]
-    [SerializeField] private float _shootRange = 50f;
-    [SerializeField] private float _shootDamage = 25f;
+    [SerializeField] private Transform _weaponPosition;
+    [SerializeField] private BaseWeapon _firstWeapon; //// TODO
+    [SerializeField] private BaseWeapon _secondWeapon;////
+    private WeaponRuntime _currentWeapon;
+    private WeaponRuntime _secondWeaponRuntime;
+    private bool _isShooting = false;
+
 
     [Header("Animation")]
     [SerializeField] private Animator _animator;
 
+#region \ Unity Methods
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
 
-    private void OnEnable()
+        if (_playerCamera == null) return;
+
+        bool isLocal = isLocalPlayer;
+
+        _playerCamera.gameObject.SetActive(isLocal);
+
+        var listener = _playerCamera.GetComponent<AudioListener>();
+        if (listener)
+            listener.enabled = isLocal;
+        SpawnWeapon();
+    }
+
+    public override void OnStartLocalPlayer()
     {
         EventBus.EventBus.SubscribeToEvent<MoveEvent>(OnMoveEvent);
         EventBus.EventBus.SubscribeToEvent<LookEvent>(OnLookEvent);
         EventBus.EventBus.SubscribeToEvent<ShootEvent>(OnShootEvent);
+        EventBus.EventBus.SubscribeToEvent<SwitchWeaponEvent>(OnSwitchWeaponEvent);
+        EventBus.EventBus.SubscribeToEvent<InteractEvent>(OnInteractEvent);
     }
 
-    private void OnDisable()
+    public override void OnStopLocalPlayer()
     {
         EventBus.EventBus.UnsubscribeFromEvent<MoveEvent>(OnMoveEvent);
         EventBus.EventBus.UnsubscribeFromEvent<LookEvent>(OnLookEvent);
         EventBus.EventBus.UnsubscribeFromEvent<ShootEvent>(OnShootEvent);
+        EventBus.EventBus.UnsubscribeFromEvent<SwitchWeaponEvent>(OnSwitchWeaponEvent);
+        EventBus.EventBus.UnsubscribeFromEvent<InteractEvent>(OnInteractEvent);
     }
 
     private void Update()
     {
         if (!isLocalPlayer) return;
+        RotateCharacterOnly();
+        // UpdateAnimation(_movementInput.sqrMagnitude > 0.01f);
 
-        // Вращение игрока по Y
-        transform.Rotate(Vector3.up, _lookInput.x * _lookSensitivity * Time.deltaTime);
-
-        // Вращение камеры по X
-        _lookRotationX += -_lookInput.y * _lookSensitivity * Time.deltaTime;
-        _lookRotationX = Mathf.Clamp(_lookRotationX, -90f, 90f);
-        if (_playerCamera != null)
+        if (_isShooting)
         {
-            _playerCamera.transform.localRotation = Quaternion.Euler(_lookRotationX, 0, 0);
+            HandleShooting();
         }
-
-
-            UpdateAnimation(true);
-
     }
 
     private void FixedUpdate()
     {
         if (!isLocalPlayer) return;
-        transform.Translate(_movementInput * _speed * Time.fixedDeltaTime, Space.Self);
+        Vector3 nextPos = transform.position + (_movementInput * _speed * Time.fixedDeltaTime);
+        _playerRB.MovePosition(nextPos);
     }
-
-    private void OnMoveEvent(MoveEvent e)
+#endregion
+#region  \ Movement and Look
+    private void RotateCharacterOnly()
     {
-        _movementInput = new Vector3(e.MovementInput.x, 0, e.MovementInput.y);
+        if (_lookInput.sqrMagnitude < 0.01f) return;
+        Vector3 direction = new Vector3(_lookInput.x, 0, _lookInput.y).normalized;
+        if (direction != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            _playerTransform.rotation = Quaternion.RotateTowards(_playerTransform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
+        }
     }
 
-    private void OnLookEvent(LookEvent e)
-    {
-        _lookInput = e.LookInput;
-    }
-
+#endregion
+#region \ Event Handlers
+    private void OnMoveEvent(MoveEvent e) => _movementInput = new Vector3(e.MovementInput.x, 0, e.MovementInput.y);
+    private void OnLookEvent(LookEvent e) => _lookInput = e.LookInput;
     private void OnShootEvent(ShootEvent e)
     {
         if (!isLocalPlayer) return;
 
-        UpdateAnimation(false);
-        // Двери
-        if (Physics.Raycast(_playerCamera.transform.position, _playerCamera.transform.forward, out RaycastHit doorHit, 2f))
-        {
-            if (doorHit.collider.TryGetComponent<DoorBehavior>(out var door))
-            {
-
-                    door.CmdToggleDoor();
-            }
-        }
-
-        // NPC
-if (Physics.Raycast(_playerCamera.transform.position, _playerCamera.transform.forward, out RaycastHit npcHit, _shootRange))
-{
-    // Получаем NPC_behaviour с родителя (или самого объекта)
-    NPC_behaviour npc = npcHit.collider.GetComponentInParent<NPC_behaviour>();
-    if (npc != null)
-    {
-        CmdHitNPC(npc.netIdentity.netId, _shootDamage);
-        Debug.Log($"Client hit NPC netId: {npc.netIdentity.netId}");
+        _isShooting = e.IsShooting;
     }
-}
-    }
-
-    [Command(requiresAuthority = false)]
-    private void CmdHitNPC(uint npcNetId, float damage)
+    private void OnSwitchWeaponEvent(SwitchWeaponEvent e)
     {
-        if (!NetworkServer.spawned.TryGetValue(npcNetId, out var identity))
-        {
-            Debug.LogWarning("CmdHitNPC: NPC не найден на сервере!");
-            return;
-        }
+        if (!isLocalPlayer) return;
 
-        if (identity.TryGetComponent<NPC_behaviour>(out var npc))
-        {
-            npc.TakeDamage(damage);
-            Debug.Log($"NPC hit on server: {npc.name}, damage: {damage}");
-        }
-    }
+        if (_currentWeapon == null || _secondWeaponRuntime == null) return;
 
-    private void UpdateAnimation(bool isMoving)
-    {
-        if (isMoving)
+        if (_currentWeapon.gameObject.activeSelf)
         {
-            float speed = new Vector3(_movementInput.x, 0, _movementInput.z).magnitude;
-
-            _animator.SetInteger("State", (int)speed);
+            _currentWeapon.gameObject.SetActive(false);
+            _secondWeaponRuntime.gameObject.SetActive(true);
+            _currentWeapon = _secondWeaponRuntime;
         }
         else
         {
-            _animator.SetTrigger("Attack");
+            _secondWeaponRuntime.gameObject.SetActive(false);
+            _currentWeapon.gameObject.SetActive(true);
         }
     }
+
+    private void OnInteractEvent(InteractEvent e)
+    {
+        if (!isLocalPlayer) return;
+
+        // Interaction logic here
+    }
+#endregion
+#region  \Shooting
+
+    private void SpawnWeapon()
+    {
+        _currentWeapon = Instantiate(_firstWeapon.WeaponPrefab, 
+                                _weaponPosition.position, 
+                                _weaponPosition.rotation, 
+                                _weaponPosition)
+                                .GetComponent<WeaponRuntime>();
+
+        _secondWeaponRuntime = Instantiate(_secondWeapon.WeaponPrefab,
+                                        _weaponPosition.position,
+                                        _weaponPosition.rotation,
+                                        _weaponPosition)
+                                        .GetComponent<WeaponRuntime>();
+        _secondWeaponRuntime.gameObject.SetActive(false);
+    }
+
+    private void HandleShooting()
+    {
+                // _animator.SetTrigger("Attack");
+
+        // локальный эффект
+        if (_currentWeapon == null) return;
+        _currentWeapon.Shoot();
+
+        CmdFire(_weaponPosition.position, _weaponPosition.forward);
+    }
+
+    [Command]
+    private void CmdFire(Vector3 position, Vector3 forward)
+    {
+        float range = _firstWeapon.Range;
+        float damage = _firstWeapon.Damage;
+
+        if (Physics.Raycast(position, forward, out RaycastHit hit, range))
+        {
+            if (hit.collider.transform.root == transform) return;
+
+            if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+            {
+                damageable.TakeDamage(damage);
+            }
+        }
+
+        RpcFire();
+    }
+
+    [ClientRpc]
+    private void RpcFire()
+    {
+        if (isLocalPlayer) return; 
+        _currentWeapon.Shoot();
+    }
+
+    public void TakeDamage(float amount)
+    {
+        // Реализация получения урона игроком
+        Debug.Log($"Player {netId} took {amount} damage.");
+    }
+#endregion
+    private void UpdateAnimation(bool isMoving) => _animator.SetBool("IsMoving", isMoving);
 }

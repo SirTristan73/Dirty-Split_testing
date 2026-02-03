@@ -4,9 +4,9 @@ using Steamworks;
 public class SteamManager : MonoBehaviour
 {
     public static SteamManager Instance { get; private set; }
-    public bool Initialized { get; private set; }
+    public static bool Initialized { get; private set; }
 
-    void Awake()
+    private void Awake()
     {
         if (Instance != null)
         {
@@ -17,28 +17,37 @@ public class SteamManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
+        if (Initialized)
+            return;
+
         try
         {
-            SteamClient.Init(480); // AppID 480 для теста
+            if (!SteamAPI.Init())
+            {
+                Debug.LogError("SteamAPI.Init() вернул false. Steam мёртв.");
+                SteamAPI.Init();
+
+                return;
+            }
+
             Initialized = true;
-            Debug.Log("Steam инициализирован: " + Steamworks.SteamClient.Name);
+            Debug.Log("Steam инициализирован (Steamworks.NET).");
         }
         catch (System.Exception e)
         {
-            Initialized = false;
-            Debug.LogError("Steam инициализация не удалась: " + e.Message);
+            Debug.LogError("Steam инициализация не удалась: " + e);
         }
     }
 
-    void Update()
+    private void Update()
     {
         if (Initialized)
-            SteamClient.RunCallbacks();
+            SteamAPI.RunCallbacks();
     }
 
-    void OnApplicationQuit()
+    private void OnApplicationQuit()
     {
         if (Initialized)
-            SteamClient.Shutdown();
+            SteamAPI.Shutdown();
     }
 }

@@ -1,9 +1,9 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Steamworks;
-using Steamworks.Data;
 using UnityEngine;
 using UnityEngine.UI;
+using Steamworks;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using TMPro;
 
 public class SteamFriendsPanel : MonoBehaviour
 {
@@ -11,17 +11,17 @@ public class SteamFriendsPanel : MonoBehaviour
     public Transform ContentRoot;
     public GameObject FriendPrefab;
 
-    private readonly List<GameObject> _spawned = new();
+    private readonly List<GameObject> spawned = new();
 
     void Start()
     {
-        if (!SteamClient.IsValid)
+        if (!SteamManager.Initialized)
         {
-            Debug.LogError("SteamClient не инициализирован. Steam выключен или Init не вызван.");
+            Debug.LogError("Steam не инициализирован. Вселенная отменяется.");
             return;
         }
 
-        DisplayFriends();
+        RefreshFriends();
     }
 
     void OnDestroy()
@@ -33,46 +33,42 @@ public class SteamFriendsPanel : MonoBehaviour
     // MAIN
     // =========================
 
-    void DisplayFriends()
+    void RefreshFriends()
     {
         ClearUI();
 
-        foreach (var friend in SteamFriends.GetFriends())
+        int count = SteamFriends.GetFriendCount(EFriendFlags.k_EFriendFlagImmediate);
+
+        for (int i = 0; i < count; i++)
         {
-            CreateFriendItem(friend);
+            var id = SteamFriends.GetFriendByIndex(i, EFriendFlags.k_EFriendFlagImmediate);
+            CreateFriendItem(id);
         }
     }
 
-    async void CreateFriendItem(Friend friend)
+    async void CreateFriendItem(CSteamID id)
     {
         var obj = Instantiate(FriendPrefab, ContentRoot);
-        _spawned.Add(obj);
+        spawned.Add(obj);
+
+        var name = SteamFriends.GetFriendPersonaName(id);
+        var state = SteamFriends.GetFriendPersonaState(id);
 
         // TEXT
-        var text = obj.GetComponentInChildren<TMPro.TMP_Text>();
+        var text = obj.GetComponentInChildren<TMP_Text>();
         if (text != null)
         {
-            string status =
-                friend.IsOnline ? "🟢 Online" :
-                friend.IsAway ? "🟡 Away" :
-                friend.IsBusy ? "🔴 Busy" :
-                "⚫ Offline";
-
-            text.text = $"{friend.Name}\n{status}";
-            text.color = friend.IsOnline ? UnityEngine.Color.white : UnityEngine.Color.gray;
+            text.text = $"{name}\n{StatusToString(state)}";
+            text.color = state == EPersonaState.k_EPersonaStateOnline
+                ? Color.white
+                : Color.gray;
         }
 
         // AVATAR
         var image = obj.GetComponentInChildren<RawImage>();
         if (image != null)
         {
-            await LoadAvatar(friend.Id, image, friend.IsOnline);
-        }
-
-        var nick = obj.GetComponentInChildren<TMPro.TMP_Text>();
-        if (nick != null)
-        {
-            nick.text = friend.Name;
+            await LoadAvatar(id, image, state == EPersonaState.k_EPersonaStateOnline);
         }
     }
 
@@ -80,47 +76,40 @@ public class SteamFriendsPanel : MonoBehaviour
     // AVATAR
     // =========================
 
-    async Task LoadAvatar(SteamId id, RawImage image, bool isOnline)
+    public static async Task LoadAvatar(CSteamID id, RawImage image, bool online)
     {
-        var avatar = await SteamFriends.GetLargeAvatarAsync(id);
-        if (avatar == null) return;
+        int handle = SteamFriends.GetLargeFriendAvatar(id);
 
-        var img = avatar.Value;
+        while (handle == -1)
+            await Task.Delay(50);
 
-        Texture2D tex = new Texture2D(
-            (int)img.Width,
-            (int)img.Height,
-            TextureFormat.RGBA32,
-            false
-        );
+        if (handle <= 0) return;
 
-        tex.LoadRawTextureData(img.Data);
-        FlipTextureY(tex);
+        SteamUtils.GetImageSize(handle, out uint w, out uint h);
+        byte[] data = new byte[w * h * 4];
+
+        if (!SteamUtils.GetImageRGBA(handle, data, (int)(w * h * 4)))
+            return;
+
+        var tex = new Texture2D((int)w, (int)h, TextureFormat.RGBA32, false);
+        tex.LoadRawTextureData(data);
+        tex.Apply();
 
         image.texture = tex;
-        image.color = isOnline ? UnityEngine.Color.white : new UnityEngine.Color(1f, 1f, 1f, 0.35f);
+        image.color = online ? Color.white : new Color(1, 1, 1, 0.35f);
     }
 
-    static void FlipTextureY(Texture2D tex)
+    // =========================
+    // UTILS
+    // =========================
+
+    string StatusToString(EPersonaState state) => state switch
     {
-        var pixels = tex.GetPixels();
-        int w = tex.width;
-        int h = tex.height;
-
-        for (int y = 0; y < h / 2; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                int top = y * w + x;
-                int bottom = (h - y - 1) * w + x;
-
-                (pixels[top], pixels[bottom]) = (pixels[bottom], pixels[top]);
-            }
-        }
-
-        tex.SetPixels(pixels);
-        tex.Apply();
-    }
+        EPersonaState.k_EPersonaStateOnline => "🟢 Online",
+        EPersonaState.k_EPersonaStateAway => "🟡 Away",
+        EPersonaState.k_EPersonaStateBusy => "🔴 Busy",
+        _ => "⚫ Offline"
+    };
 
     // =========================
     // CLEANUP
@@ -128,9 +117,9 @@ public class SteamFriendsPanel : MonoBehaviour
 
     void ClearUI()
     {
-        foreach (var go in _spawned)
+        foreach (var go in spawned)
             if (go) Destroy(go);
 
-        _spawned.Clear();
+        spawned.Clear();
     }
 }

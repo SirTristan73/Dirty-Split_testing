@@ -1,201 +1,175 @@
 using UnityEngine;
 using Mirror;
 using Steamworks;
-using Steamworks.Data;
 using System.Collections.Generic;
 using UnityEngine.UI;
-using System.Threading.Tasks;
 using TMPro;
 
 public class SteamLobbyManager : MonoBehaviour
 {
-    [Header("UI Elements")]
+    [Header("UI")]
     public Transform ContentRoot;
-    public GameObject FriendPrefab;
-    public Button StartGameButton;
+    public GameObject PlayerPrefab;
     public Button CreateLobbyButton;
+    public Button StartGameButton;
 
-    private Dictionary<SteamId, GameObject> _playersInLobby = new Dictionary<SteamId, GameObject>();
-    public Lobby CurrentLobby { get; private set; }
+    private CSteamID currentLobby;
+    private Dictionary<CSteamID, GameObject> players = new();
 
-    private const string HostAddressKey = "HostAddress";
+    private const string HOST_STARTED_KEY = "HostStarted";
+    private const string HOST_STEAMID_KEY = "HostSteamId";
+
+    #region CALLBACKS
+
+    private Callback<LobbyCreated_t> lobbyCreated;
+    private Callback<LobbyEnter_t> lobbyEntered;
+    private Callback<LobbyDataUpdate_t> lobbyDataUpdated;
+    private Callback<GameLobbyJoinRequested_t> joinRequested;
 
     private void Awake()
     {
-        SteamMatchmaking.OnLobbyCreated += OnLobbyCreatedCallback;
-        SteamMatchmaking.OnLobbyEntered += OnLobbyEntered;
-        SteamMatchmaking.OnLobbyMemberJoined += OnLobbyMemberJoined;
-        SteamMatchmaking.OnLobbyMemberDisconnected += OnLobbyMemberLeft;
-        SteamMatchmaking.OnLobbyMemberLeave += OnLobbyMemberLeft;
-        SteamFriends.OnGameLobbyJoinRequested += OnGameLobbyJoinRequest;
-        
-        // Главная деталь: следим за обновлением данных лобби
-        SteamMatchmaking.OnLobbyDataChanged += OnLobbyDataChanged;
-    }
-
-    private void OnDestroy()
-    {
-        SteamMatchmaking.OnLobbyCreated -= OnLobbyCreatedCallback;
-        SteamMatchmaking.OnLobbyEntered -= OnLobbyEntered;
-        SteamMatchmaking.OnLobbyMemberJoined -= OnLobbyMemberJoined;
-        SteamMatchmaking.OnLobbyMemberDisconnected -= OnLobbyMemberLeft;
-        SteamMatchmaking.OnLobbyMemberLeave -= OnLobbyMemberLeft;
-        SteamFriends.OnGameLobbyJoinRequested -= OnGameLobbyJoinRequest;
-        SteamMatchmaking.OnLobbyDataChanged -= OnLobbyDataChanged;
+        lobbyCreated     = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
+        lobbyEntered     = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
+        lobbyDataUpdated = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdated);
+        joinRequested    = Callback<GameLobbyJoinRequested_t>.Create(OnJoinRequest);
     }
 
     private void OnEnable()
     {
         StartGameButton.interactable = false;
         CreateLobbyButton.onClick.AddListener(CreateLobby);
-        StartGameButton.onClick.AddListener(OnStartGamePressed);
+        StartGameButton.onClick.AddListener(StartGame);
     }
 
     private void OnDisable()
     {
         CreateLobbyButton.onClick.RemoveListener(CreateLobby);
-        StartGameButton.onClick.RemoveListener(OnStartGamePressed);
+        StartGameButton.onClick.RemoveListener(StartGame);
     }
 
-    public async void CreateLobby()
-    {
-        var lobby = await SteamMatchmaking.CreateLobbyAsync(4);
-        if (!lobby.HasValue) return;
+    #endregion
 
-        CurrentLobby = lobby.Value;
-        CurrentLobby.SetPublic();
-        CurrentLobby.SetJoinable(true);
+    #region LOBBY LOGIC
+
+    private void CreateLobby()
+    {
+        SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, 4);
     }
 
-    private void OnLobbyCreatedCallback(Result result, Lobby lobby)
+    private void OnLobbyCreated(LobbyCreated_t cb)
     {
-        if (result != Result.OK) return;
-        CurrentLobby = lobby;
-        // Кнопка старта активна только для хозяина
+        if (cb.m_eResult != EResult.k_EResultOK)
+        {
+            Debug.LogError("Lobby creation failed. Steam сегодня не в духе.");
+            return;
+        }
+
+        currentLobby = new CSteamID(cb.m_ulSteamIDLobby);
+        SteamMatchmaking.SetLobbyJoinable(currentLobby, true);
+
         StartGameButton.interactable = true;
+        RebuildUI();
     }
 
-    private void OnLobbyEntered(Lobby lobby)
+    private void OnLobbyEntered(LobbyEnter_t cb)
     {
-        CurrentLobby = lobby;
-        ClearLobbyUI();
-
-        foreach (var member in lobby.Members)
-            AddPlayerToUI(member);
-
-        // Если мы зашли в лобби, где уже идет игра (HostAddress уже задан)
-        CheckForHostAddress(lobby);
+        currentLobby = new CSteamID(cb.m_ulSteamIDLobby);
+        RebuildUI();
+        TryJoinIfHostStarted();
     }
 
-    private void OnLobbyDataChanged(Lobby lobby)
+    private void OnLobbyDataUpdated(LobbyDataUpdate_t cb)
     {
-        CheckForHostAddress(lobby);
+        if ((ulong)currentLobby == cb.m_ulSteamIDLobby)
+            TryJoinIfHostStarted();
     }
 
-    private void CheckForHostAddress(Lobby lobby)
+    private void OnJoinRequest(GameLobbyJoinRequested_t cb)
     {
-        // Если адрес хоста появился и мы еще не подключены — заходим
-        string hostAddress = lobby.GetData(HostAddressKey);
-        if (!string.IsNullOrEmpty(hostAddress) && !NetworkClient.active && !NetworkServer.active)
+        SteamMatchmaking.JoinLobby(cb.m_steamIDLobby);
+    }
+
+    #endregion
+
+    #region NETWORK
+
+    private void StartGame()
+    {
+        // Только владелец лобби может быть хостом. Демократии не будет.
+        if (SteamMatchmaking.GetLobbyOwner(currentLobby) != SteamUser.GetSteamID())
+            return;
+
+        // КЛЮЧЕВО: объявляем SteamID хоста
+        SteamMatchmaking.SetLobbyData(
+            currentLobby,
+            HOST_STEAMID_KEY,
+            SteamUser.GetSteamID().ToString()
+        );
+
+        SteamMatchmaking.SetLobbyData(currentLobby, HOST_STARTED_KEY, "1");
+
+        NetworkManager.singleton.networkAddress =
+            SteamUser.GetSteamID().ToString();
+
+        NetworkManager.singleton.StartHost();
+    }
+
+    private void TryJoinIfHostStarted()
+    {
+        if (NetworkClient.active || NetworkServer.active)
+            return;
+
+        var started = SteamMatchmaking.GetLobbyData(currentLobby, HOST_STARTED_KEY);
+        if (started != "1")
+            return;
+
+        var hostId = SteamMatchmaking.GetLobbyData(currentLobby, HOST_STEAMID_KEY);
+        if (string.IsNullOrEmpty(hostId))
         {
-            Debug.Log($"Подключаемся к хосту: {hostAddress}");
-            NetworkManager.singleton.networkAddress = hostAddress;
-            NetworkManager.singleton.StartClient();
+            Debug.LogError("HostSteamId отсутствует. Лобби без хоста — философская ошибка.");
+            return;
+        }
+
+        NetworkManager.singleton.networkAddress = hostId;
+        NetworkManager.singleton.StartClient();
+    }
+
+    #endregion
+
+    #region UI
+
+    private void RebuildUI()
+    {
+        foreach (var obj in players.Values)
+            Destroy(obj);
+
+        players.Clear();
+
+        int count = SteamMatchmaking.GetNumLobbyMembers(currentLobby);
+        for (int i = 0; i < count; i++)
+        {
+            var id = SteamMatchmaking.GetLobbyMemberByIndex(currentLobby, i);
+            AddPlayer(id);
+            
         }
     }
 
-    public void OnStartGamePressed()
+    async void AddPlayer(CSteamID id)
     {
-        // Проверка на вшивость: только владелец лобби может жать старт
-        if (CurrentLobby.Owner.Id != SteamClient.SteamId) return;
+        if (players.ContainsKey(id)) return;
 
-        // Рассылаем всем наш SteamID как адрес сервера
-        CurrentLobby.SetData(HostAddressKey, SteamClient.SteamId.ToString());
+        var ui = Instantiate(PlayerPrefab, ContentRoot);
+        players[id] = ui;
 
-        var manager = NetworkManager.singleton;
-        if (manager != null && !NetworkServer.active)
+        var text = ui.GetComponentInChildren<TMP_Text>();
+        if (text != null)
+            text.text = SteamFriends.GetFriendPersonaName(id);
+        var image = ui.GetComponentInChildren<RawImage>();
+        if (image != null)
         {
-            manager.StartHost();
+            SteamFriendsPanel.LoadAvatar(id, image, SteamFriends.GetFriendPersonaState(id) == EPersonaState.k_EPersonaStateOnline);
         }
     }
 
-    private async void OnGameLobbyJoinRequest(Lobby lobby, SteamId friendId)
-    {
-        await lobby.Join();
-    }
-
-    // --- UI ЛОГИКА ---
-
-    private void AddPlayerToUI(Friend friend)
-    {
-        if (_playersInLobby.ContainsKey(friend.Id)) return;
-        var obj = Instantiate(FriendPrefab, ContentRoot);
-        _playersInLobby[friend.Id] = obj;
-        UpdatePlayerDisplay(friend.Id, obj);
-    }
-
-    private void OnLobbyMemberJoined(Lobby lobby, Friend friend) => AddPlayerToUI(friend);
-
-    private void OnLobbyMemberLeft(Lobby lobby, Friend friend)
-    {
-        if (_playersInLobby.ContainsKey(friend.Id))
-        {
-            Destroy(_playersInLobby[friend.Id]);
-            _playersInLobby.Remove(friend.Id);
-        }
-    }
-
-    private async void UpdatePlayerDisplay(SteamId id, GameObject uiElement)
-    {
-        int attempts = 0;
-        string name = new Friend(id).Name;
-        while ((string.IsNullOrEmpty(name) || name == "[unknown]") && attempts < 5)
-        {
-            await Task.Delay(500);
-            name = new Friend(id).Name;
-            attempts++;
-        }
-
-        if (uiElement == null) return;
-        var text = uiElement.GetComponentInChildren<TMP_Text>();
-        if (text != null) text.text = name;
-
-        var rawImage = uiElement.GetComponentInChildren<RawImage>();
-        if (rawImage != null) await LoadAvatar(id, rawImage);
-    }
-
-    private void ClearLobbyUI()
-    {
-        foreach (var obj in _playersInLobby.Values) Destroy(obj);
-        _playersInLobby.Clear();
-    }
-
-    private async Task LoadAvatar(SteamId id, RawImage targetImage)
-    {
-        var img = await SteamFriends.GetLargeAvatarAsync(id);
-        if (!img.HasValue) return;
-
-        Texture2D tex = new Texture2D((int)img.Value.Width, (int)img.Value.Height, TextureFormat.RGBA32, false);
-        tex.LoadRawTextureData(img.Value.Data);
-        FlipTextureY(tex);
-        if (targetImage != null) targetImage.texture = tex;
-    }
-
-    private void FlipTextureY(Texture2D tex)
-    {
-        var pixels = tex.GetPixels();
-        int w = tex.width, h = tex.height;
-        for (int y = 0; y < h / 2; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                int top = y * w + x, bottom = (h - y - 1) * w + x;
-                var temp = pixels[top];
-                pixels[top] = pixels[bottom];
-                pixels[bottom] = temp;
-            }
-        }
-        tex.SetPixels(pixels);
-        tex.Apply();
-    }
+    #endregion
 }

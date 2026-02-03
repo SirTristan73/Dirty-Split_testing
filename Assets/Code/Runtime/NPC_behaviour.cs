@@ -1,41 +1,65 @@
 using UnityEngine;
 using Mirror;
-using UnityEngine.UI;
 using TMPro;
 
-public class NPC_behaviour : NetworkBehaviour
+public class NPC_behaviour : NetworkBehaviour, IDamageable
 {
     [SyncVar(hook = nameof(OnHPChanged))]
     private float _currentHP;
 
     [SerializeField] private float _maxHP = 100f;
-    [SerializeField] private Slider _hpBar;
+    [SerializeField] private float _moveSpeed;
+    [SerializeField] private float _moveRange;
+    private Vector3 _startPosition;
     [SerializeField] private TMP_Text _nameText;
-
-    private Camera _camera;
-    private Transform _uiRoot;
+    private Transform _targetTransform;
+    
+    [SerializeField] private Transform _uiRoot;
 
     private void Start()
     {
         if (isServer)
+        {
             _currentHP = _maxHP;
-
-        _uiRoot = _hpBar.transform.parent;
+            _startPosition = transform.position;
+        }
 
         if (isClient)
-            _camera = Camera.main;
+            FindTarget();
 
-        UpdateHPBar();
+        UpdateHPDisplay();
+    }
+
+    private void FindTarget()
+    {
+        if (NetworkClient.localPlayer != null)
+        {
+            _targetTransform = NetworkClient.localPlayer.transform;
+        }
+    }
+
+    private void Update()
+    {
+        float xOffset = Mathf.PingPong(Time.time * _moveSpeed, _moveRange);
+        transform.position = _startPosition + new Vector3(xOffset, 0, 0);
     }
 
     private void LateUpdate()
     {
-        if (_camera == null)
-            _camera = Camera.main;
-
-        if (_camera != null && _uiRoot != null)
+        if (_targetTransform == null)
         {
-            _uiRoot.LookAt(_camera.transform);
+            FindTarget();
+            return;
+        }
+
+        if (_uiRoot != null)
+        {
+            Vector3 directionToPlayer = _targetTransform.position - _uiRoot.position;
+            directionToPlayer.y = 0;
+            if (directionToPlayer.sqrMagnitude > 0.001f)
+            {
+                _uiRoot.rotation = Quaternion.LookRotation(-directionToPlayer);
+            }
         }
     }
 
@@ -46,20 +70,19 @@ public class NPC_behaviour : NetworkBehaviour
         if (_currentHP <= 0f)
         {
             _currentHP = 0f;
-            NetworkServer.Destroy(gameObject); // удаляем NPC на всех клиентах
+            NetworkServer.Destroy(gameObject); 
         }
     }
 
     void OnHPChanged(float oldHP, float newHP)
     {
-        UpdateHPBar();
+        UpdateHPDisplay();
     }
 
-    void UpdateHPBar()
+    void UpdateHPDisplay()
     {
-        if (_hpBar != null)
+        if (_nameText != null)
         {
-            _hpBar.value = _currentHP / _maxHP;
             _nameText.text = $"NPC {_currentHP}/{_maxHP}";
         }
     }

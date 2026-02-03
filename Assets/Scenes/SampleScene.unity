@@ -471,7 +471,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 525557795}
-  - component: {fileID: 525557794}
+  - component: {fileID: 525557797}
   m_Layer: 0
   m_Name: Steam
   m_TagString: Untagged
@@ -479,18 +479,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &525557794
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 525557793}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ced497b59f2844eb1b93ba965d50a3b1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Core::SteamManager
 --- !u!4 &525557795
 Transform:
   m_ObjectHideFlags: 0
@@ -506,6 +494,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &525557797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 525557793}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ced497b59f2844eb1b93ba965d50a3b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Core::SteamManager
 --- !u!1 &545961443
 GameObject:
   m_ObjectHideFlags: 0
@@ -752,6 +752,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &670500980
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 670500982}
+  - component: {fileID: 670500981}
+  m_Layer: 0
+  m_Name: FriendListManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &670500981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 670500980}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27125b972a4a24c3487d22ddf0ad1329, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Core::SteamFriendsPanel
+  ContentRoot: {fileID: 1428275650}
+  FriendPrefab: {fileID: 6588366958113708511, guid: 08272a2cc1d7b437b8d9dc3f428847b3, type: 3}
+--- !u!4 &670500982
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 670500980}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -892,6 +938,38 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 4089e010-2c95-4aee-9809-f88c18e4abb0
     m_ActionName: 'Player/LookInput[/Mouse/delta/up,/Mouse/delta/down,/Mouse/delta/left,/Mouse/delta/right]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 883758090}
+        m_TargetAssemblyTypeName: InputManager, dasdad
+        m_MethodName: OnInteractCallback
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 05739975-8c8d-4b44-9515-72693cad6732
+    m_ActionName: 'Player/Interact[/Keyboard/e]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 883758090}
+        m_TargetAssemblyTypeName: InputManager, dasdad
+        m_MethodName: OnSwitchWeaponCallback
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 5dfee708-3d6d-473b-8d2b-a5b6f419236b
+    m_ActionName: 'Player/ChangeWeapon[/Keyboard/f]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -1038,7 +1116,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1241971065}
-  - component: {fileID: 1241971064}
+  - component: {fileID: 1241971066}
   m_Layer: 0
   m_Name: LobbyManager
   m_TagString: Untagged
@@ -1046,22 +1124,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1241971064
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1241971063}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4351a2da2eee46759fa784929f81b9e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Core::SteamLobbymanager
-  ContentRoot: {fileID: 1253207578}
-  FriendPrefab: {fileID: 6588366958113708511, guid: ff8b4d13458294afe8ea8a628c4fc5fc, type: 3}
-  StartGameButton: {fileID: 2014321305}
-  CreateLobbyButton: {fileID: 545961445}
 --- !u!4 &1241971065
 Transform:
   m_ObjectHideFlags: 0
@@ -1077,6 +1139,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1241971066
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1241971063}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4351a2da2eee46759fa784929f81b9e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Core::SteamLobbyManager
+  ContentRoot: {fileID: 1253207578}
+  PlayerPrefab: {fileID: 6588366958113708511, guid: 08272a2cc1d7b437b8d9dc3f428847b3, type: 3}
+  CreateLobbyButton: {fileID: 545961445}
+  StartGameButton: {fileID: 2014321305}
 --- !u!1 &1253207577
 GameObject:
   m_ObjectHideFlags: 0
@@ -1186,7 +1264,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1428275650}
-  - component: {fileID: 1428275653}
   - component: {fileID: 1428275652}
   - component: {fileID: 1428275651}
   - component: {fileID: 1428275654}
@@ -1254,20 +1331,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1428275649}
   m_CullTransparentMesh: 1
---- !u!114 &1428275653
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1428275649}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 27125b972a4a24c3487d22ddf0ad1329, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Core::SteamFriendsPanel
-  ContentRoot: {fileID: 1428275650}
-  FriendPrefab: {fileID: 6588366958113708511, guid: ff8b4d13458294afe8ea8a628c4fc5fc, type: 3}
 --- !u!114 &1428275654
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1556,7 +1619,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2044744922}
-  - component: {fileID: 2044744924}
+  - component: {fileID: 2044744926}
   - component: {fileID: 2044744925}
   m_Layer: 0
   m_Name: NetworkManager
@@ -1580,7 +1643,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2044744924
+--- !u!114 &2044744925
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1589,9 +1652,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 2044744918}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e72e6012183364daf9dff59d10099535, type: 3}
+  m_Script: {fileID: 11500000, guid: e6e55fca1f4e4844593a3dd65a3ecb39, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Core::HeistNetworkManager
+  m_EditorClassIdentifier: FizzySteamworks::Mirror.FizzySteam.FizzySteamworks
+  Channels: 0200000001000000
+  Timeout: 25
+  AllowSteamRelay: 1
+  UseNextGenSteamNetworking: 1
+--- !u!114 &2044744926
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2044744918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75ca8f729e3e640198523896331c9349, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Core::SteamNetworkManager
   dontDestroyOnLoad: 1
   runInBackground: 1
   headlessStartMode: 0
@@ -1600,16 +1679,19 @@ MonoBehaviour:
   offlineScene: 
   onlineScene: 
   offlineSceneLoadDelay: 0
-  transport: {fileID: 0}
+  transport: {fileID: 2044744925}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
   authenticator: {fileID: 0}
-  playerPrefab: {fileID: 3146195988119901843, guid: bd94158aec41143cdb11ba43f7e40eda, type: 3}
+  playerPrefab: {fileID: 3146195988119901843, guid: b03d005a148f44a77847df57db962bad, type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 0
-  spawnPrefabs: []
+  spawnPrefabs:
+  - {fileID: 8551333568661459407, guid: e8704ea67b1e5487d884d8349e98bc35, type: 3}
+  - {fileID: 2187164285877369202, guid: 2fdf2bc4cb82f4af6bfa70cf77b6a641, type: 3}
+  - {fileID: 6667903012269605898, guid: 7b9740446202949edb63655951bb278f, type: 3}
   exceptionsDisconnect: 1
   snapshotSettings:
     bufferTimeMultiplier: 2
@@ -1625,26 +1707,7 @@ MonoBehaviour:
   evaluationMethod: 0
   evaluationInterval: 3
   timeInterpolationGui: 0
-  _mapPrefab: {fileID: 3475384873219977328, guid: 3cb7f2b46b73148d498bb6adedde0eb2, type: 3}
---- !u!114 &2044744925
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2044744918}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b007cc34dc2c984594d0d2d5a8b47e5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Mirror.FizzySteam.FizzyFacepunch
-  Channels: 0200000001000000
-  Timeout: 25
-  SteamAppID: 480
-  AllowSteamRelay: 1
-  UseNextGenSteamNetworking: 1
-  InitFacepunch: 1
-  SteamUserID: 0
+  _mapPrefab: {fileID: 3475384873219977328, guid: a3abd2374b06445099241e8031f09a31, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1656,5 +1719,6 @@ SceneRoots:
   - {fileID: 423313474}
   - {fileID: 525557795}
   - {fileID: 1241971065}
+  - {fileID: 670500982}
   - {fileID: 571246296}
   - {fileID: 1131071294}
